@@ -966,6 +966,9 @@ extern struct global_data_all_processes
   double Sink_jet_precess_degree;
   double Sink_jet_precess_period;
 #endif
+#ifdef CHO_JET
+  double Sink_spin;
+#endif
 }
 All;
 
@@ -1273,6 +1276,10 @@ enum iofields
   IO_HeI,
   IO_HeII,
   IO_UNSPMASS,
+  IO_UNSPOVER,
+  IO_UNSPKAPPA,
+  IO_TOSP,
+  IO_KAPPA,
   IO_CRATE,
   IO_HRATE,
   IO_NHRATE,

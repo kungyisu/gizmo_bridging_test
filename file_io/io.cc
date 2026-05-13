@@ -361,7 +361,46 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif           
             break;
-            
+        case IO_UNSPOVER:
+#if defined(SINK_WIND_SPAWN) && defined(OUTPUT_UNSPAWNED_SINKMASS) && defined(CHO_JET)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) P[pindex].unspawned_wind_over;
+                    n++;
+                }
+#endif
+            break;
+	case IO_UNSPKAPPA:
+#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].unspawned_wind_kappa;
+                    n++;
+                }
+#endif
+            break;
+	case IO_TOSP:
+#if defined(SINK_WIND_SPAWN)  && defined(CHO_JET)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].BH_tospawn_bin;
+                    n++;
+                }
+#endif
+            break;
+	case IO_KAPPA:
+#if defined(SINK_WIND_SPAWN)  && defined(CHO_JET)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].BH_kappa;
+                    n++;
+                }
+#endif
+            break;
         case IO_CRATE:
 #if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
             for(n = 0; n < pc; pindex++)
@@ -1898,6 +1937,10 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_RAD_TEMP:
         case IO_DUST_TEMP:
         case IO_UNSPMASS:
+        case IO_UNSPOVER:
+        case IO_UNSPKAPPA:
+	case IO_KAPPA:
+        case IO_TOSP:
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2230,6 +2273,10 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_RAD_TEMP:
         case IO_DUST_TEMP:
         case IO_UNSPMASS:
+        case IO_UNSPOVER:
+        case IO_UNSPKAPPA:
+	case IO_KAPPA:
+	case IO_TOSP:
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2252,7 +2299,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_TSTP:
         case IO_VDIV:
         case IO_DIVB:
-	    case IO_AMBIPOLAR:
+	case IO_AMBIPOLAR:
         case IO_HALL:
         case IO_OHMIC:
         case IO_ABVC:
@@ -2649,6 +2696,10 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_SINKMASSALPHA:
         case IO_SINK_ANGMOM:
         case IO_UNSPMASS:
+        case IO_UNSPOVER:
+        case IO_UNSPKAPPA:
+	case IO_TOSP:
+	case IO_KAPPA:
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_SINK_FORM_MASS:
@@ -2909,7 +2960,14 @@ int blockpresent(enum iofields blocknr)
             return 1;
 #endif   
             break;
-
+        case IO_UNSPOVER:
+        case IO_UNSPKAPPA:
+        case IO_KAPPA:
+        case IO_TOSP:
+#if defined(SINK_WIND_SPAWN) && defined(OUTPUT_UNSPAWNED_SINKMASS) && defined(CHO_JET)
+            return 1;
+#endif
+            break;
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -3372,6 +3430,18 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_UNSPMASS:
             strncpy(label, "USPM", 4);
             break;     
+        case IO_UNSPOVER:
+            strncpy(label, "USPO", 4);
+            break;
+        case IO_UNSPKAPPA:
+            strncpy(label, "USPK", 4);
+            break;
+	case IO_TOSP:
+	    strncpy(label, "TOSP", 4);
+            break;
+	case IO_KAPPA:
+	    strncpy(label, "BKAP", 4);
+            break;
         case IO_CRATE:
             strncpy(label, "CRATE", 4);
             break;
@@ -3806,6 +3876,18 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_UNSPMASS:
             strcpy(buf, "Unspawned_Wind_Mass");
             break;     
+        case IO_UNSPOVER:
+            strcpy(buf, "Unspawned_Wind_Over");
+            break;
+        case IO_UNSPKAPPA:
+            strcpy(buf, "Unspawned_Wind_KAPPA");
+            break;
+        case IO_KAPPA:
+            strcpy(buf, "BH_KAPPA");
+            break;
+        case IO_TOSP:
+            strcpy(buf, "BH_tospawn_bin");
+            break;
         case IO_CRATE:
             strcpy(buf, "CoolingRate");
             break;

@@ -1897,6 +1897,11 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.Sink_jet_precess_period;
       id[nt++] = REAL;
 #endif
+#ifdef CHO_JET
+      strcpy(tag[nt], "Sink_spin");
+      addr[nt] = &All.Sink_spin;
+      id[nt++] = REAL;
+#endif
 
 #ifdef EOS_TABULATED
         strcpy(tag[nt], "EosTable");

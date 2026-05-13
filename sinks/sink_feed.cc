@@ -313,7 +313,7 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 if(f_accreted>0) {p /= f_accreted; if((sink_mass_withdisk - local.Mass) < 0) {p = ( (1-f_accreted)/f_accreted ) * local.Mdot * local.Dt * wk / local.Density;}} /* DAA: compute outflow probability when "sink_mass_withdisk < mass" - we don't need to enforce mass conservation in this case, relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass */
 #endif
                                 w = get_random_number(P[j].ID);
-                                if(w < p)
+                                if((w < p) && (P[j].ID!=All.SpawnedWindCellID))
                                 {
 #ifdef SINK_OUTPUT_MOREINFO
                                     printf(" ..Sink-Food Marked: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);

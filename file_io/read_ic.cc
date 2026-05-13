@@ -564,7 +564,29 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
              for(n = 0; n < pc; n++) {P[offset + n].unspawned_wind_mass = *fp++;}
 #endif
             break; 
-            
+        case IO_UNSPOVER:
+#if defined(SINK_WIND_SPAWN) && defined(OUTPUT_UNSPAWNED_SINKMASS) && defined(CHO_JET)
+             for(n = 0; n < pc; n++) {P[offset + n].unspawned_wind_over = *fp++;}
+#endif
+            break;
+         case IO_UNSPKAPPA:
+#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+             for(n = 0; n < pc; n++)
+                P[offset + n].unspawned_wind_kappa = *fp++;
+#endif
+            break;
+        case IO_KAPPA:
+#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+             for(n = 0; n < pc; n++)
+                P[offset + n].BH_kappa = *fp++;
+#endif
+            break;
+       case IO_TOSP:
+#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+             for(n = 0; n < pc; n++)
+                P[offset + n].BH_tospawn_bin = *fp++;
+#endif
+            break;
         case IO_TURB_DYNAMIC_COEFF:
 #ifdef TURB_DIFF_DYNAMIC
             for (n = 0; n < pc; n++) {CellP[offset + n].TD_DynDiffCoeff = *fp++;}

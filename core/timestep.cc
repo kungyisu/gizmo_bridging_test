@@ -288,7 +288,9 @@ integertime get_timestep(int p,		/*!< particle index */
 {
     double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0;
     integertime ti_step; int k; k=0;
-
+#ifdef CHO_JET
+    integertime ti_step_old=P[p].dt_step;
+#endif
 #ifdef IO_GRADUAL_SNAPSHOT_RESTART // if on the first timestep of a snapshot restart, start at the lowest allowed timestep to minimize any transient effects
     if(RestartFlag == 2 && All.Ti_Current == 0) {return 2;}
 #endif
@@ -973,6 +975,13 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef SINGLE_STAR_FB_JETS	    
             dt_accr = DMIN(dt_accr, target_mass_for_wind_spawning(p) / P[p].Sink_Mdot); 
 #endif
+#ifdef CHO_JET
+            double mdot_wind=DMAX(P[p].Sink_Mdot_ROI-P[p].Sink_Mdot,0);
+            if (mdot_wind>0)
+            {double dt_acct_2= 0.5*(SINK_WIND_SPAWN)*target_mass_for_wind_spawning(p)/mdot_wind;
+            dt_accr = DMIN(dt_accr, dt_acct_2 );
+            }
+#endif
         } // if(P[p].Sink_Mdot > 0 && P[p].Sink_Mass > 0)
 #if defined(SINK_SEED_GROWTH_TESTS) || defined(FIRE_BHS)
         double dt_evol = 4.2e5 / UNIT_TIME_IN_YR; // totally arbitrary hard-coding here //
@@ -1094,6 +1103,9 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 
     ti_step = (integertime) (dt / All.Timebase_interval);
+#ifdef CHO_JET
+    if((P[p].Type == 5)&& (ti_step>2*ti_step_old)) ti_step=(integertime)(2*ti_step_old);
+#endif
 #ifndef STOP_WHEN_BELOW_MINTIMESTEP
     if(ti_step<=1) ti_step=2;
 #endif

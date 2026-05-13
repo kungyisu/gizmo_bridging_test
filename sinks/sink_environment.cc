@@ -203,7 +203,7 @@ int sink_environment_evaluate(int target, int mode, int *exportflag, int *export
                     
                     /* DAA: compute mass/angular momentum for GAS/STAR/DM components within BH kernel
                             this is done always now (regardless of the specific BH options used) */
-                    if(P[j].Type==0)
+                    if( (P[j].Type==0)  && (P[j].ID!=All.SpawnedWindCellID) )
                     {
                         /* we found gas in BH's kernel */
                         out.Mgas_in_Kernel += wt;

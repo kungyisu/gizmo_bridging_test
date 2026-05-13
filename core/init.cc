@@ -308,6 +308,7 @@ void init(void)
 
 #if defined(INIT_STELLAR_METALS_AGES_DEFINED) && defined(GALSF)
         if(RestartFlag == 0) {P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_IN_GYR) * get_random_number(P[i].ID + 3);}
+        if(RestartFlag == 2 && (P[i].Type==2 || P[i].Type==3)) {P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_IN_GYR) * get_random_number(P[i].ID + 3);}  //make stellar age for parttype 2 and 3 consistent
 #endif
         
 #ifdef GRAIN_FLUID
@@ -461,9 +462,19 @@ void init(void)
             {
                 P[i].Sink_Mass = All.SeedSinkMass;
                 P[i].Sink_Formation_Mass = P[i].Mass;
+                P[i].Sink_Mdot=0;
 #ifdef SINK_RIAF_SUBEDDINGTON_MODEL
                 P[i].Sink_Mdot_ROI = 0;
                 P[i].Sink_ROI = 0;
+#endif
+#ifdef SINK_WIND_SPAWN
+                P[i].unspawned_wind_mass=0;
+#ifdef CHO_JET
+                P[i].unspawned_wind_over=0;
+                P[i].unspawned_wind_kappa=0;
+                P[i].BH_kappa=0;
+                P[i].BH_tospawn_bin=0;
+#endif
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                 P[i].Sink_Mass = P[i].Mass;

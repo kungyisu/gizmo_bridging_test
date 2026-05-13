@@ -1851,6 +1851,16 @@ void fof_make_sink_particles(void)
 #endif
 #ifdef SINK_WIND_SPAWN
         P[import_indices[n]].unspawned_wind_mass = 0;
+#ifdef CHO_JET
+        P[import_indices[n]].unspawned_wind_kappa = 0;
+        P[import_indices[n]].unspawned_wind_over = 0;
+	P[import_indices[n]].BH_kappa = 0;
+        P[import_indices[n]].BH_tospawn_bin = 0;
+#endif
+#endif
+#ifdef SINK_RIAF_SUBEDDINGTON_MODEL
+       P[import_indices[n]].Sink_Mdot_ROI=0;
+       P[import_indices[n]].Sink_ROI=0;
 #endif
 #ifdef SINK_COUNTPROGS
         P[import_indices[n]].Sink_CountProgs = 1;

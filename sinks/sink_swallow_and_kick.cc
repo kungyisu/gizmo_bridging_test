@@ -569,7 +569,7 @@ void spawn_sink_wind_feedback(void)
         if((NumPart+n_particles_split+(int)(2.*(SINK_WIND_SPAWN+0.1)) < nmax) && (ptype_can_spawn==1)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
         {
             int sink_eligible_to_spawn = 0; // flag to check eligibility for spawning
-            if(P[i].unspawned_wind_mass >= (SINK_WIND_SPAWN)*target_mass_for_wind_spawning(i)) {sink_eligible_to_spawn=1;} // have 'enough' mass to spawn
+            if( (P[i].unspawned_wind_mass >= (SINK_WIND_SPAWN)*target_mass_for_wind_spawning(i)) && (P[i].Mass >= (SINK_WIND_SPAWN)*target_mass_for_wind_spawning(i))  ) {sink_eligible_to_spawn=1;} // have 'enough' mass to spawn
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
             if(P[i].Type==5) {if((P[i].Mass <= 3.5*P[i].Sink_Formation_Mass) || (P[i].Sink_Mass*UNIT_MASS_IN_SOLAR < 0.01)) {sink_eligible_to_spawn=0;}}  // spawning causes problems in these modules for low-mass sinks, so arbitrarily restrict to this, since it's roughly a criterion on the minimum particle mass. and for <0.01 Msun, in pre-collapse phase, no jets
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
@@ -593,6 +593,10 @@ void spawn_sink_wind_feedback(void)
                 if(dummy_gas_tag >= 0)
                 {
                     n_particles_split += sink_spawn_particle_wind_shell( i , dummy_gas_tag, n_particles_split);
+                }
+                else
+                {
+                    TreeReconstructFlag = 1; // try this as it found no dummy
                 }
             }
         }
@@ -688,6 +692,17 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
         }
     }
 #endif
+#if (defined(CHO_JET))
+   else if (mode==4) {
+    phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask);
+    cos_theta=P[i].BH_tospawn_bin;
+    sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
+    double ct_v=1.-(1-cos((90.)*(M_PI/180.)))*(1.-fabs(cos_theta)), st_v=sqrt(1-ct_v*ct_v);
+    if(cos_theta<0) {ct_v*=-1;}
+    for(k=0;k<3;k++) {dpdir[k] = sin_theta*cos_phi*nx[k] + sin_theta*sin_phi*ny[k] + cos_theta*nz[k];
+                     veldir[k] = st_v     *cos_phi*nx[k] + st_v     *sin_phi*ny[k] + ct_v     *nz[k];}
+    }
+#endif
     return;
 }
 
@@ -758,8 +773,16 @@ double get_spawned_cell_launch_speed(int i)
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE)
     if(P[i].ProtoStellarStage == 6) {v_magnitude = single_star_SN_velocity(i);} // this star is about to go SNe: get velocity from fancy model
 #endif
+#if defined(CHO_JET)
+        double kappa_now = P[i].unspawned_wind_kappa/ P[i].unspawned_wind_mass;
+        double mdot = P[i].Sink_Mdot / (P[i].Sink_Mass / (5.e7/UNIT_TIME_IN_YR));
+        double sink_eta= 0.38*pow(All.Sink_spin,2)+0.011;
+        if (mdot>0.01) {sink_eta =sink_eta*pow(0.33,2); }
+        v_magnitude= pow(sink_eta * kappa_now *2,0.5)*C_LIGHT_CODE;
+#endif
     return v_magnitude;
 }
+
 
 
 #ifdef MAGNETIC
@@ -925,6 +948,9 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #ifdef SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT
     if(P[i].Type==4) {mode = 3;} // star particle spawn is isotropic but regularized
 #endif
+#ifdef CHO_JET
+    mode = 4;
+#endif
 
     // based on the mode we're in, let's pick a fixed orthonormal basis that all spawned elements are aware of
     double jz[3]={0,0,1},jy[3]={0,1,0},jx[3]={1,0,0};  /* set up a coordinate system [xyz if we don't have any other information */
@@ -959,6 +985,9 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
     /* create the  new particles to be added to the end of the particle list :
         i is the sink particle tag, j is the new "spawed" particle's location, dummy_cell_i_to_clone is a dummy gas cell's tag to be used to init the wind particle */
     int mode_default = mode, mode_prev = mode;
+#ifdef CHO_JET
+    double kappa_to_spawn= P[i].unspawned_wind_kappa/ P[i].unspawned_wind_mass;
+#endif
     double v_magnitude_physical_default = get_spawned_cell_launch_speed(i), v_magnitude_physical=v_magnitude_physical_default, v_magnitude_physical_prev=v_magnitude_physical; /* call subroutine for this velocity */
     
     for(j = NumPart + num_already_spawned; j < NumPart + num_already_spawned + n_particles_split; j++)
@@ -1009,7 +1038,81 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
             }
         }
 #endif
+
+
+#ifdef CHO_JET
+    double which_bin=get_random_number(j+95+3*ThisTask);
+    double cos_theta_begin=-1;
+    double cos_theta_end  =1;
+    double cos_theta=0;
+    if (which_bin<0.20202210195590742)
+	   {
+            cos_theta_begin=cos(M_PI/180.);
+            cos_theta_end  =1.;
+	    cos_theta=cos_theta_begin + (cos_theta_end - cos_theta_begin) * get_random_number(j+995+2*ThisTask);
+            P[i].BH_tospawn_bin=cos_theta;
+	    mass_of_new_particle=mass_of_new_particle_default/10.;
+            }
+    else
+      {if (which_bin<0.1846226366399287+0.20202210195590742)
+	    {
+	    double random=get_random_number(j+995+2*ThisTask);
+            double theta = -0.0879404*pow(random,2) + 0.32324096*pow(random,1) +  0.52498031;
+	    cos_theta =cos(theta);
+            P[i].BH_tospawn_bin=cos_theta;
+	    mass_of_new_particle=mass_of_new_particle_default/3.;
+	    }
+       else
+       {if  (which_bin<0.12424966581442301+0.1846226366399287+0.20202210195590742)
+	      {
+	      double random=get_random_number(j+995+2*ThisTask);
+              double theta = -0.05638331*pow(random,2) + 0.29725648*pow(random,1) +  0.7651389;
+	      cos_theta =cos(theta);
+	      P[i].BH_tospawn_bin=cos_theta;
+	      mass_of_new_particle=mass_of_new_particle_default;
+	      }
+        else {
+	      double random=get_random_number(j+995+2*ThisTask);
+              double theta = -0.13670099*pow(random,2) + 0.66641489*pow(random,1) +  1.01412803;
+	      cos_theta=cos(theta);
+	      P[i].BH_tospawn_bin=cos_theta;
+              mass_of_new_particle=mass_of_new_particle_default;
+	     }
+      }}
+#endif
+
+       double internal_energy_code = All.Sink_outflow_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); /* internal energy, determined by desired wind temperature (assume fully ionized primordial gas with gamma=5/3) */
+#if defined(SINK_RIAF_SUBEDDINGTON_MODEL)
+        internal_energy_code = 0.01 * (0.5*v_magnitude_physical*v_magnitude_physical); /* set to be 1% of the kinetic energy of the ejecta, here */
+#endif
+#ifdef CHO_JET
+       if (P[i].BH_tospawn_bin>cos(M_PI/6.))
+       {v_magnitude_physical   = v_magnitude_physical_default*3.8889609459693912;
+        internal_energy_code   = pow(v_magnitude_physical_default*3.47478504806882,2)/2.;
+               }
+       else {
+        double vel_fac = 105.223343 *pow(P[i].BH_tospawn_bin,6) -236.637337 *pow(P[i].BH_tospawn_bin,5)+203.494824*pow(P[i].BH_tospawn_bin,4) -81.7898647 * pow(P[i].BH_tospawn_bin,3) + 15.4709669 *pow(P[i].BH_tospawn_bin,2) -1.12781627*pow(P[i].BH_tospawn_bin,1)+0.151659799;
+        double th_fac  = 89.28658384*pow(P[i].BH_tospawn_bin,6)-199.79167038*pow(P[i].BH_tospawn_bin,5)+172.60180317*pow(P[i].BH_tospawn_bin,4)-69.92996844 * pow(P[i].BH_tospawn_bin,3) + 13.46241523*pow(P[i].BH_tospawn_bin,2)-0.94145397*pow(P[i].BH_tospawn_bin,1)+0.20245072;
+        v_magnitude_physical   = v_magnitude_physical_default*vel_fac;
+        internal_energy_code   = pow(v_magnitude_physical_default*th_fac,2)/2.;
+            }
+       if (v_magnitude_physical>0.3*C_LIGHT_CODE)
+        {mass_of_new_particle=mass_of_new_particle*pow(v_magnitude_physical/(0.3*C_LIGHT_CODE),2);
+        internal_energy_code = internal_energy_code *pow(v_magnitude_physical/(0.3*C_LIGHT_CODE),-2);
+        v_magnitude_physical=0.3*C_LIGHT_CODE;
+        }
+      if (v_magnitude_physical<C_LIGHT_CODE/1000.)
+        {mass_of_new_particle=mass_of_new_particle*pow(v_magnitude_physical/(C_LIGHT_CODE/1000.),2);
+        internal_energy_code = internal_energy_code *pow(v_magnitude_physical/(C_LIGHT_CODE/1000.),-2);
+        v_magnitude_physical=C_LIGHT_CODE/1000.; }
+#endif
         v_magnitude_physical_prev = v_magnitude_physical; mode_prev = mode; mass_of_new_particle_prev=mass_of_new_particle;
+#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+        double sne_energy_fraction_in_thermal = 1.e-3;
+        if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6) {internal_energy_code = All.MinGasTemp / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ) + sne_energy_fraction_in_thermal/(1.-sne_energy_fraction_in_thermal) * pow(single_star_SN_velocity(i),2.0);}}
+#endif
+        CellP[j].InternalEnergy     = internal_energy_code;
+        CellP[j].InternalEnergyPred = CellP[j].InternalEnergy;
 
         /* now we need to make sure everything is correctly placed in timebins for the tree */
         P[j].TimeBin = bin; // get the timebin, and put this particle into the appropriate timebin
@@ -1104,8 +1207,6 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         CellP[j].MassTrue = P[j].Mass;
 #endif
-        P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
-        P[i].unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
 
 #if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) || defined(SNE_NONSINK_SPAWN) || (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4))
         double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_jet_yields(yields,i); // default to jet-type
@@ -1143,10 +1244,10 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR)
         CellP[j].IniDen = -1. * CellP[j].Density; /* this is essentially acting like a bitflag, to signal to the code that the density needs to be recalculated because a spawn event just occurred */
 #endif
-#ifdef MAGNETIC
+#ifdef MAGNETIC   //set magnetic field
         get_wind_spawn_magnetic_field(j, mode, jy, jz, dpdir, d_r);
 #endif
-#ifdef COSMIC_RAY_FLUID
+#ifdef COSMIC_RAY_FLUID   //set CR
 #if defined(CRFLUID_INJECTION_AT_SHOCKS)
         CellP[j].DtCREgyNewInjectionFromShocks=0;
 #endif
@@ -1162,15 +1263,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #endif
         } /* complete CR initialization to null */
 #endif
-        CellP[j].InternalEnergy = All.Sink_outflow_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); /* internal energy, determined by desired wind temperature (assume fully ionized primordial gas with gamma=5/3) */
-#ifdef SINK_RIAF_SUBEDDINGTON_MODEL
-        CellP[j].InternalEnergy = 0.01 * (0.5*v_magnitude_physical*v_magnitude_physical); /* set to be 1% of the kinetic energy of the ejecta, here */
-#endif
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-        double sne_energy_fraction_in_thermal = 1.e-3;
-        if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6) {CellP[j].InternalEnergy = All.MinGasTemp / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ) + sne_energy_fraction_in_thermal/(1.-sne_energy_fraction_in_thermal) * pow(single_star_SN_velocity(i),2.0);}}
-#endif
-        CellP[j].InternalEnergyPred = CellP[j].InternalEnergy;
+
 
 #if defined(COSMIC_RAY_FLUID) && defined(SINK_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
         double eps_cr = evaluate_sink_cosmicray_efficiency(P[i].Sink_Mdot,P[i].Sink_Mass,i);
@@ -1190,8 +1283,21 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #endif
 #endif
         /* Note: New tree construction can be avoided because of  `force_add_element_to_tree()' */
+        P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
+#ifdef CHO_JET
+        P[i].unspawned_wind_kappa -= P[j].Mass * kappa_to_spawn;
+#endif
+        P[i].unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass make this the last operation*/
         force_add_element_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
     }
+#ifdef CHO_JET
+    if(P[i].unspawned_wind_mass < 0)
+      {P[i].unspawned_wind_kappa=0;
+       P[i].unspawned_wind_over=-1*P[i].unspawned_wind_mass;
+       P[i].unspawned_wind_mass=0;
+       }
+    if(P[i].unspawned_wind_kappa<0){P[i].unspawned_wind_kappa=0;}
+#endif
     if(P[i].unspawned_wind_mass < 0) {P[i].unspawned_wind_mass=0;}
     return n_particles_split;
 }

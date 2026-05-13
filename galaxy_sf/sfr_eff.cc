@@ -502,6 +502,16 @@ void star_formation_parent_routine(void)
 #endif
 #ifdef SINK_WIND_SPAWN
                         P[i].unspawned_wind_mass = 0;
+#ifdef CHO_JET
+                        P[i].unspawned_wind_over = 0;
+                        P[i].unspawned_wind_kappa = 0;
+		        P[i].BH_kappa = 0;
+                        P[i].BH_tospawn_bin=0;
+#endif
+#endif
+#ifdef SINK_RIAF_SUBEDDINGTON_MODEL
+                        P[i].Sink_Mdot_ROI=0;
+                        P[i].Sink_ROI=0;
 #endif
 #ifdef SINK_COUNTPROGS
                         P[i].Sink_CountProgs = 1;

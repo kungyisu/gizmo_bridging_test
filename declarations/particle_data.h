@@ -148,6 +148,12 @@ extern ALIGN(32) struct particle_data
     int IndexMapToTempStruc;   /*!< allows for mapping to SinkTempInfo struc */
 #ifdef SINK_WIND_SPAWN
     MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
+#ifdef CHO_JET
+    MyFloat unspawned_wind_kappa;
+    MyFloat unspawned_wind_over;
+    MyFloat BH_kappa;
+    MyFloat BH_tospawn_bin;
+#endif
 #endif
 #ifdef SINK_COUNTPROGS
     int Sink_CountProgs;

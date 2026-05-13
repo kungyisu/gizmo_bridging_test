@@ -281,6 +281,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 if(CellP[j].DelayTime > 0) {if(local.DelayTime <= 0) {continue;}}
 #endif
                 if(P[j].Mass <= 0) continue;
+                if((local.Type == 5) && (P[j].ID==All.SpawnedWindCellID)) continue;
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
@@ -399,7 +400,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
 #if defined(SINGLE_STAR_TIMESTEPPING)
             double dr_eff_wtd = Get_Particle_Size(j);
             dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
-            if((dr_eff_wtd < out->Sink_dr_to_NearestGasNeighbor) && (P[j].Mass > 0)) {out->Sink_dr_to_NearestGasNeighbor = dr_eff_wtd;}
+            if((dr_eff_wtd < out->Sink_dr_to_NearestGasNeighbor) && (P[j].Mass > 0) && (P[j].ID!=All.SpawnedWindCellID)) {out->Sink_dr_to_NearestGasNeighbor = dr_eff_wtd;}
 #endif
         }
 #endif // SINK_PARTICLES

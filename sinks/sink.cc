@@ -339,7 +339,7 @@ void set_sink_mdot(int i, int n, double dt)
     } // if(SinkTempInfo[i].Mgas_in_Kernel > 0)
     mdot *= All.SinkAccretionFactor; // this is a pure normalization multiplier here
 
-#if (SINK_GRAVACCRETION >= 9) && (SINK_GRAVACCRETION <= 11) /* heres where we calculate the Bondi accretion rate, if that's going to be used */
+#if ((SINK_GRAVACCRETION >= 9) && (SINK_GRAVACCRETION <= 11)) || defined(CHO_JET) /* heres where we calculate the Bondi accretion rate, if that's going to be used */
     double bhvel2 = 0, rho = P[n].DensityAroundParticle * All.cf_a3inv; /* we want all quantities in physical units */
     for(k=0;k<3;k++) {bhvel2 += SinkTempInfo[i].Sink_SurroundingGasVel[k]*SinkTempInfo[i].Sink_SurroundingGasVel[k];}
 #if (SINK_GRAVACCRETION == 10)
@@ -351,7 +351,13 @@ void set_sink_mdot(int i, int n, double dt)
 #if (SINK_GRAVACCRETION == 11) /* variable-alpha model (Booth&Schaye 2009): now All.SinkAccretionFactor is the slope of the density dependence */
         AccretionFactor = 1.0; if(rho > All.PhysDensThresh) {AccretionFactor = pow(rho/All.PhysDensThresh, All.SinkAccretionFactor);}
 #endif
+#ifdef CHO_JET
+      if (pow(soundspeed2+bhvel2,0.5)/(C_LIGHT_CODE)>1./6000. )
+       { mdot= M_PI * AccretionFactor * All.G * All.G * P[n].Sink_Mass * P[n].Sink_Mass * rho / fac;
+       }
+#else
         mdot = 4. * M_PI * AccretionFactor * All.G * All.G * P[n].Sink_Mass * P[n].Sink_Mass * rho / fac;
+#endif
     } else {mdot=0;}
 #endif
 
@@ -369,7 +375,11 @@ void set_sink_mdot(int i, int n, double dt)
     double x_MdiskSelfGravLimiter = P[n].Sink_Mass_Reservoir / (SINK_ALPHADISK_ACCRETION * P[n].Sink_Mass);
     if(x_MdiskSelfGravLimiter > 20.) {mdot=0;} else {mdot *= exp(-0.5*x_MdiskSelfGravLimiter*x_MdiskSelfGravLimiter);}
     SinkTempInfo[i].mdot_reservoir = mdot;  mdot = 0;  /* if SINK_GRAVCAPTURE_GAS is off, this gets the accretion rate */
+#ifdef CHO_JET
+    if(P[n].Sink_Mass_Reservoir >= 0)
+#else
     if(P[n].Sink_Mass_Reservoir > 0)
+#endif
     {
         /* this below is a more complicated expression using the outer-disk expression from Shakura & Sunyaev. Simpler expression
             below captures the same physics with considerably less potential to extrapolate to rather odd scalings in extreme regimes :
@@ -421,48 +431,75 @@ void set_sink_mdot(int i, int n, double dt)
         if(sigma2_eff < sigma_min*sigma_min) {sigma2_eff = sigma_min*sigma_min;}
         double r_grav = 2. * All.G * m_sink / (C_LIGHT_CODE*C_LIGHT_CODE);
         double r_roi = All.G * m_sink / sigma2_eff;
+        double r_effective;
         if(r_roi < r_grav) {r_roi = r_grav;}
         int ROI_resolved = 0;
+        int ROI_hot=0;
+#ifdef CHO_JET
+       if (pow(soundspeed2+bhvel2,0.5)/(C_LIGHT_CODE)>1./6000. ) ROI_hot=1;
+#endif
         if(r_roi > r_kernel) {ROI_resolved = 1;}
-        if(ROI_resolved)
+        if(ROI_hot){r_effective= 2. * All.G * m_sink / (soundspeed2+bhvel2);}
+        else
+        {if(ROI_resolved)
         {
             double mgas_enc = SinkTempInfo[i].Mgas_in_Kernel + P[n].Sink_Mass_Reservoir;
             double omega_enc = sqrt(All.G * m_kernel / (r_kernel*r_kernel*r_kernel));
             mdot_ROI = psi_magdisk * mgas_enc * omega_enc;
             SinkTempInfo[i].mdot_reservoir = mdot_ROI;
+#ifdef CHO_JET
+            r_effective=r_kernel;
+#else
+            r_effective=r_roi;
+#endif
         } else {
             double omega_enc = sqrt(All.G * P[n].Mass / (r_roi*r_roi*r_roi));
             double mdot_ROI_alt = psi_magdisk * P[n].Sink_Mass_Reservoir * omega_enc;
-            if(mdot_ROI_alt > mdot_ROI) {mdot_ROI = mdot_ROI_alt;}
-        }
+            r_effective=r_roi;
+            if(mdot_ROI_alt > mdot_ROI)
+             {mdot_ROI = mdot_ROI_alt;
+#ifdef CHO_JET
+             SinkTempInfo[i].mdot_reservoir = mdot_ROI;
+#endif
+             }
+        }}
+        r_effective=DMAX(r_effective,r_grav);
         double mdot_Edd = m_sink / (5.e7 / UNIT_TIME_IN_YR);
         double mdot_crit_ROI = (2.*psi_magdisk) * mdot_Edd;
         mdot = 0;
         if(mdot_ROI > mdot_crit_ROI)
         {
-            mdot = pow(r_grav/r_roi, 0.15) * mdot_ROI;
+            mdot = pow(r_grav/r_effective, 0.15) * mdot_ROI;
         } else {
-            mdot = pow(r_grav/r_roi, 0.5) * mdot_ROI;
+            mdot = pow(r_grav/r_effective, 0.5) * mdot_ROI;
         }
         if(dt > 0) {
+#ifdef CHO_JET
+            double mdot_ROI_max = P[n].Sink_Mass_Reservoir / dt+SinkTempInfo[i].mdot_reservoir;;
+#else
             double mdot_ROI_max = P[n].Sink_Mass_Reservoir / dt;
+#endif
             if(mdot_ROI_max < mdot_ROI) {
                 double mdot_max = (mdot/mdot_ROI) * mdot_ROI_max;
                 mdot_ROI = mdot_ROI_max;
                 mdot = mdot_max;
             }
         }
+#ifndef CHO_JET
         if(mdot <= 1.e-30 || !isfinite(mdot)) {mdot = 1.e-30;}
+#endif
         t_acc_disk = P[n].Sink_Mass_Reservoir / mdot;
         P[n].Sink_Mdot_ROI = mdot_ROI;
-        P[n].Sink_ROI = r_roi;
+        P[n].Sink_ROI = r_effective;
 #endif
         
 #if defined(SINK_GRAVCAPTURE_GAS)
         t_acc_disk /= All.SinkAccretionFactor; // when using GRAVCAPTURE, this won't multiply the continuous mdot, but rather mdot from disk to BH
 #endif
         if(dt > 0) {t_acc_disk = DMAX(t_acc_disk , 3.*dt);} /* make sure accretion timescale is at least a few timesteps to avoid over-shoot, etc */
+#ifndef CHO_JET
         mdot = P[n].Sink_Mass_Reservoir / t_acc_disk;
+#endif
     }
 #endif //ifdef SINK_ALPHADISK_ACCRETION
 
@@ -480,7 +517,7 @@ void set_sink_mdot(int i, int n, double dt)
         random_generator_forbh=gsl_rng_alloc(gsl_rng_ranlxd1);
         gsl_rng_set(random_generator_forbh, nsubgridvar);
         if(n0_sgrid_elements >= 1) {
-            for(jsub=1;jsub<=n0_sgrid_elements;jsub++) {
+            for(jsub=1;jsub<=n0_sgrid_elements;jsub++){
                 varsg1=gsl_rng_uniform(random_generator_forbh);
                 varsg2=gsl_ran_ugaussian(random_generator_forbh);
                 time_var_subgridvar=fac*pow(omega_ri*dt,-((float)jsub)/n0_sgrid_elements) + 2.*M_PI*varsg1;
@@ -497,7 +534,9 @@ void set_sink_mdot(int i, int n, double dt)
     if(dt>0)
     {
 #if defined(SINK_WIND_SPAWN)
+#ifndef SINK_RIAF_SUBEDDINGTON_MODEL
         if(dt>0 && mdot > P[n].Sink_Mass_Reservoir/dt*All.Sink_accreted_fraction) mdot = P[n].Sink_Mass_Reservoir/dt*All.Sink_accreted_fraction;
+#endif
 #else
         if(dt>0 && mdot > P[n].Sink_Mass_Reservoir/dt) mdot = P[n].Sink_Mass_Reservoir/dt;
 #endif
@@ -531,6 +570,12 @@ void set_sink_mdot(int i, int n, double dt)
     /* alright, now we can FINALLY set the BH accretion rate */
     if(isnan(mdot)) {mdot=0;}
     P[n].Sink_Mdot = DMAX(mdot,0);
+#ifdef CHO_JET
+   if (P[n].Sink_Mdot_ROI>0)
+    P[n].BH_kappa=P[n].Sink_Mdot/P[n].Sink_Mdot_ROI;
+   else
+    P[n].BH_kappa=0;
+#endif
 }
 
 
@@ -817,9 +862,14 @@ void sink_final_operations(void)
 #endif
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
 #if defined(SINK_ALPHADISK_ACCRETION)
+#ifndef CHO_JET
         dm = DMIN(dm, P[n].Sink_Mass_Reservoir);
         dm_wind = DMIN(dm_wind, P[n].Sink_Mass_Reservoir - dm);
+#endif
         P[n].Sink_Mass_Reservoir -= dm_wind;
+#ifdef CHO_JET
+        if (P[n].Sink_Mass_Reservoir<0) P[n].Sink_Mass_Reservoir=0; //this should not happen beyond mechinical precission
+#endif
 #else
         if(dm_wind > P[n].Sink_Mass) {dm_wind = P[n].Sink_Mass;}
         P[n].Sink_Mass -= dm_wind;
@@ -857,7 +907,22 @@ void sink_final_operations(void)
         }
 #endif
 #endif
-        P[n].unspawned_wind_mass += dm_wind;
+#ifndef CHO_JET
+        P[n].unspawned_wind_mass  += dm_wind;
+#else
+        if (P[n].unspawned_wind_over>0)
+        { double mass_remaining=DMAX(dm_wind-P[n].unspawned_wind_over,0);
+          P[n].unspawned_wind_mass  += mass_remaining;
+          P[n].unspawned_wind_over  = DMAX(P[n].unspawned_wind_over-dm_wind,0);
+          P[n].unspawned_wind_kappa += mass_remaining*P[n].BH_kappa;
+        }
+        else
+       { P[n].unspawned_wind_mass  += dm_wind;
+         P[n].unspawned_wind_kappa +=dm_wind*P[n].BH_kappa;
+         P[n].unspawned_wind_over =0;
+       }
+#endif
+
         double n_unspawned = P[n].unspawned_wind_mass / ((SINK_WIND_SPAWN)*target_mass_for_wind_spawning(n)); // number of spawned gas cells that can be made from the mass in the reservoir
         if(n_unspawned> Max_Unspawned_MassUnits_fromSink) {Max_Unspawned_MassUnits_fromSink = n_unspawned;} // track the maximum integer number of elements this sink could spawn
 #endif
