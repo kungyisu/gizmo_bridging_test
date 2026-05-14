@@ -253,6 +253,12 @@ void do_the_cooling_for_particle(int i)
          if the flag is not set (default), then the full hydro-heating is accounted for in the cooling loop, so it should be re-zeroed here */
         CellP[i].InternalEnergy = unew;
         CellP[i].InternalEnergyPred = CellP[i].InternalEnergy;
+#ifdef CHO_JET
+        if(CellP[i].InternalEnergy> 0.5*C_LIGHT_CODE*C_LIGHT_CODE)
+        { printf("Likely weird temperature happened.\n");
+        endrun(55551);
+        }
+#endif
         set_eos_pressure(i);
 #ifndef COOLING_OPERATOR_SPLIT
         if(CellP[i].CoolingIsOperatorSplitThisTimestep==0) {CellP[i].DtInternalEnergy=0;} // if unsplit, zero the internal energy change here

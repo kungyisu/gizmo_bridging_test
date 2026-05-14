@@ -403,6 +403,16 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 CellP[i].Density = CellP[i].Density_ExplicitInt; /*!< explicitly integrated volume/density variable to be used if integrating the SPH-like form of the continuity directly */
 #endif
             }
+#ifdef CHO_JET
+       double vmax = 0.5 * C_LIGHT_CODE;
+       double v2 = 0;
+       for(j=0; j<3; j++) {v2 += P[i].Vel[j]*P[i].Vel[j];}
+       double vmax_code = vmax * All.cf_atime;
+       if(v2 > vmax_code*vmax_code)
+       {printf("Likely weird velocity happened.");
+        endrun(55552);
+       }
+#endif
         }
         
         /* set the momentum shift so we know how to move the tree! */
