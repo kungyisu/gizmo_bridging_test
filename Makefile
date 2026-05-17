@@ -99,6 +99,36 @@ endif
 FINCL =
 
 
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Anvil")
+CC       = mpicc
+CXX      = mpic++ -std=c++17
+FC       = mpif90  # gcc/clang
+#FC       = mpif90 -nofor_main  # intel
+OPTIMIZE = -O3
+OPTIMIZE += -march=znver3 -mfma -fvectorize -mfma -mavx2 -m3dnow -floop-unswitch-aggressive -fcommon -fno-strict-aliasing # aocc/clang
+#OPTIMIZE += -march=znver1 -mtune=znver1 -mfma -mavx2 -m3dnow -fomit-frame-pointer -fcommon  # gcc
+#OPTIMIZE += -march=core-avx2 -fma -ftz -fomit-frame-pointer -ipo -funroll-loops -no-prec-div -fp-model fast=2  # intel
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -fopenmp  # gcc/clang
+#OPTIMIZE += -qopenmp  # intel
+endif
+MKL_INCL = -I$(CPATH)
+MKL_LIBS = -L$(LIBRARY_PATH) -mkl=sequential
+GSL_INCL = -I$(CPATH)
+GSL_LIBS = -L$(LIBRARY_PATH)
+FFTW_INCL= -I$(CPATH)
+FFTW_LIBS= -L$(LIBRARY_PATH)
+HDF5INCL = -I$(CPATH) -DH5_USE_16_API
+HDF5LIB  = -L$(LIBRARY_PATH) -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+ifneq (USE_FFTW3, $(findstring USE_FFTW3, $(CONFIGVARS)))
+OPT += -DUSE_FFTW3
+endif
+# modules to load: aocc openmpi hdf5 gsl fftw
+# NOTE: this machine does not appear to always parallelize correctly in a hybrid MPI/OpenMP (i.e. when OPENMP is enabled) setup - it can potentially assign multiple threads to the same physical core and get lousy performance. A surefire way to get the correct thread affinity is to generate a rankfile and include as an argument to mpirun, e.g. https://github.com/mikegrudic/make_rankfile
+endif
 
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Frontera")

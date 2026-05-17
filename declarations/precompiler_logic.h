@@ -243,6 +243,21 @@
 #endif
 #endif // FIRE_BHS
 
+#if defined(CHO_JET)
+#ifndef END_AT_OVERHEAT
+#define END_AT_OVERHEAT (0.5)
+#endif
+
+#ifndef SINK_WIND_SPAWN
+#define SINK_WIND_SPAWN (2)
+#endif
+
+#ifndef SINK_RIAF_SUBEDDINGTON_MODEL
+#define SINK_RIAF_SUBEDDINGTON_MODEL (0.01)
+#endif
+#define SINK_SPIN_IN_PARAMS
+#endif
+
 #if defined(PMGRID)
 #if !defined(PM_PLACEHIGHRESREGION)
 #if (FIRE_PHYSICS_DEFAULTS == 3)

@@ -966,7 +966,7 @@ extern struct global_data_all_processes
   double Sink_jet_precess_degree;
   double Sink_jet_precess_period;
 #endif
-#ifdef CHO_JET
+#ifdef SINK_SPIN_IN_PARAMS
   double Sink_spin;
 #endif
 }
@@ -1254,6 +1254,7 @@ enum iofields
   IO_DUSTCHEM_COAG_MASSRATE,
   IO_DUSTCHEM_SHAT_MASSRATE,
   IO_SINKMASS,
+  IO_SINKSPIN,
   IO_SINKMASSALPHA,
   IO_SINK_ANGMOM,
   IO_SINKMDOT,

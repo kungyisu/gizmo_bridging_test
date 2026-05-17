@@ -372,11 +372,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 	case IO_UNSPKAPPA:
-#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+#if defined(SINK_WIND_SPAWN) && defined(OUTPUT_UNSPAWNED_SINKMASS)&& defined(CHO_JET)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = P[pindex].unspawned_wind_kappa;
+                    *fp++ = (MyOutputFloat) P[pindex].unspawned_wind_kappa;
                     n++;
                 }
 #endif
@@ -386,7 +386,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = P[pindex].BH_tospawn_bin;
+                    *fp++ = (MyOutputFloat) P[pindex].BH_tospawn_bin;
                     n++;
                 }
 #endif
@@ -396,11 +396,21 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = P[pindex].BH_kappa;
+                    *fp++ = (MyOutputFloat) P[pindex].BH_kappa;
                     n++;
                 }
 #endif
             break;
+        case IO_SINKSPIN:
+#if defined(SINK_PARTICLES) && defined(SINK_SPIN_IN_PARAMS)
+    for(n = 0; n < pc; pindex++)
+        if(P[pindex].Type == type)
+        {
+            *fp++ = (MyOutputFloat) P[pindex].Sink_Spin;
+            n++;
+        }
+#endif
+           break;
         case IO_CRATE:
 #if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
             for(n = 0; n < pc; pindex++)
@@ -1940,6 +1950,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_UNSPOVER:
         case IO_UNSPKAPPA:
 	case IO_KAPPA:
+        case IO_SINKSPIN:
         case IO_TOSP:
         case IO_CRATE:
         case IO_HRATE:
@@ -2276,6 +2287,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_UNSPOVER:
         case IO_UNSPKAPPA:
 	case IO_KAPPA:
+        case IO_SINKSPIN:
 	case IO_TOSP:
         case IO_CRATE:
         case IO_HRATE:
@@ -2700,6 +2712,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_UNSPKAPPA:
 	case IO_TOSP:
 	case IO_KAPPA:
+        case IO_SINKSPIN:
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_SINK_FORM_MASS:
@@ -2960,11 +2973,20 @@ int blockpresent(enum iofields blocknr)
             return 1;
 #endif   
             break;
-        case IO_UNSPOVER:
-        case IO_UNSPKAPPA:
         case IO_KAPPA:
         case IO_TOSP:
+#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+            return 1;
+#endif
+            break;
+        case IO_UNSPOVER:
+        case IO_UNSPKAPPA:
 #if defined(SINK_WIND_SPAWN) && defined(OUTPUT_UNSPAWNED_SINKMASS) && defined(CHO_JET)
+            return 1;
+#endif
+            break;
+        case IO_SINKSPIN:
+#if defined(SINK_PARTICLES) && defined(SINK_SPIN_IN_PARAMS)
             return 1;
 #endif
             break;
@@ -3442,6 +3464,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
 	case IO_KAPPA:
 	    strncpy(label, "BKAP", 4);
             break;
+        case IO_SINKSPIN:
+            strncpy(label, "BHSP", 4);
+            break;
         case IO_CRATE:
             strncpy(label, "CRATE", 4);
             break;
@@ -3884,6 +3909,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_KAPPA:
             strcpy(buf, "BH_KAPPA");
+            break;
+        case IO_SINKSPIN:
+            strcpy(buf, "Sink_Spin");
             break;
         case IO_TOSP:
             strcpy(buf, "BH_tospawn_bin");

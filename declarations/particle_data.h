@@ -155,6 +155,9 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_tospawn_bin;
 #endif
 #endif
+#ifdef SINK_SPIN_IN_PARAMS
+    MyFloat Sink_Spin;
+#endif
 #ifdef SINK_COUNTPROGS
     int Sink_CountProgs;
 #endif

@@ -476,6 +476,9 @@ void init(void)
                 P[i].BH_tospawn_bin=0;
 #endif
 #endif
+#ifdef SINK_SPIN_IN_PARAMS
+                P[i].Sink_Spin = All.Sink_spin;
+#endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                 P[i].Sink_Mass = P[i].Mass;
 #endif
@@ -504,6 +507,16 @@ void init(void)
                 P[i].Sink_CountProgs = 1;
 #endif
             }
+#if defined(SINK_WIND_SPAWN) && !defined(OUTPUT_UNSPAWNED_SINKMASS)
+            if(RestartFlag != 1)
+            {
+                P[i].unspawned_wind_mass = 0;
+#ifdef CHO_JET
+                P[i].unspawned_wind_over = 0;
+                P[i].unspawned_wind_kappa=0;
+#endif
+            }
+#endif
 #ifdef SINK_INTERACT_ON_GAS_TIMESTEP
             P[i].dt_since_last_gas_search = 0;
             P[i].do_gas_search_this_timestep = 1;

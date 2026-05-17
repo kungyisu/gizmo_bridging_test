@@ -99,6 +99,11 @@ struct OUTPUT_STRUCT_NAME
     MyDouble accreted_Mass;
     MyDouble accreted_Sink_Mass;
     MyDouble accreted_Sink_Mass_reservoir;
+#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+    MyDouble accreted_unspawned_wind_mass;
+    MyDouble accreted_unspawned_wind_kappa;
+    MyDouble accreted_unspawned_wind_over;
+#endif
 #if defined(SINK_SWALLOWGAS) && !defined(SINK_GRAVCAPTURE_GAS)
     MyDouble Sink_AccretionDeficit;
 #endif
@@ -138,6 +143,11 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
     ASSIGN_ADD_PRESET(SinkTempInfo[target].accreted_Mass, out->accreted_Mass, mode);
     ASSIGN_ADD_PRESET(SinkTempInfo[target].accreted_Sink_Mass, out->accreted_Sink_Mass, mode);
     ASSIGN_ADD_PRESET(SinkTempInfo[target].accreted_Sink_Mass_reservoir, out->accreted_Sink_Mass_reservoir, mode);
+#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+    ASSIGN_ADD_PRESET(SinkTempInfo[target].accreted_unspawned_wind_mass, out->accreted_unspawned_wind_mass, mode);
+    ASSIGN_ADD_PRESET(SinkTempInfo[target].accreted_unspawned_wind_kappa, out->accreted_unspawned_wind_kappa, mode);
+    ASSIGN_ADD_PRESET(SinkTempInfo[target].accreted_unspawned_wind_over, out->accreted_unspawned_wind_over, mode);
+#endif
 #if defined(SINK_SWALLOWGAS) && !defined(SINK_GRAVCAPTURE_GAS)
     ASSIGN_ADD_PRESET(SinkTempInfo[target].Sink_AccretionDeficit, out->Sink_AccretionDeficit, mode);
 #endif
@@ -338,7 +348,19 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                         out.accreted_Sink_Mass_reservoir += (P[j].Sink_Mass_Reservoir);
 #endif
 #ifdef SINK_WIND_SPAWN
+#ifdef CHO_JET
+                        out.accreted_unspawned_wind_mass += P[j].unspawned_wind_mass;
+                        out.accreted_unspawned_wind_kappa += P[j].unspawned_wind_kappa;
+                        out.accreted_unspawned_wind_over += P[j].unspawned_wind_over;
+                        #pragma omp atomic write
+                        P[j].unspawned_wind_mass = 0;
+                        #pragma omp atomic write
+                        P[j].unspawned_wind_kappa = 0;
+                        #pragma omp atomic write
+                        P[j].unspawned_wind_over = 0;
+#else
                         out_accreted_Sink_Mass_alphaornot += (P[j].unspawned_wind_mass);
+#endif
 #endif
 #ifdef SINK_COUNTPROGS
                         out.Sink_CountProgs += P[j].Sink_CountProgs;
@@ -740,7 +762,7 @@ double get_spawned_cell_launch_speed(int i)
     }
 #endif
 
-#ifdef SINK_RIAF_SUBEDDINGTON_MODEL
+#if defined(SINK_RIAF_SUBEDDINGTON_MODEL) && !defined(CHO_JET)
     double Mdot_wind = P[i].Sink_Mdot_ROI - P[i].Sink_Mdot;
     if(Mdot_wind < 0) {return MIN_REAL_NUMBER;} // should be invalid
     double mdot = P[i].Sink_Mdot / (P[i].Sink_Mass / (4.e7 / UNIT_TIME_IN_YR));
@@ -776,9 +798,9 @@ double get_spawned_cell_launch_speed(int i)
 #if defined(CHO_JET)
         double kappa_now = P[i].unspawned_wind_kappa/ P[i].unspawned_wind_mass;
         double mdot = P[i].Sink_Mdot / (P[i].Sink_Mass / (5.e7/UNIT_TIME_IN_YR));
-        double sink_eta= 0.38*pow(All.Sink_spin,2)+0.011;
+        double sink_eta= 0.38*pow(P[i].Sink_Spin,2)+0.011;
         if (mdot>0.01) {sink_eta =sink_eta*pow(0.33,2); }
-        v_magnitude= pow(sink_eta * kappa_now *2,0.5)*C_LIGHT_CODE;
+        v_magnitude= pow(sink_eta * kappa_now/(1-kappa_now) *2,0.5)*C_LIGHT_CODE;
 #endif
     return v_magnitude;
 }
@@ -989,6 +1011,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
     int mode_default = mode, mode_prev = mode;
 #ifdef CHO_JET
     double kappa_to_spawn= P[i].unspawned_wind_kappa/ P[i].unspawned_wind_mass;
+    double internal_energy_code_prev, BH_tospawn_bin_prev;
 #endif
     double v_magnitude_physical_default = get_spawned_cell_launch_speed(i), v_magnitude_physical=v_magnitude_physical_default, v_magnitude_physical_prev=v_magnitude_physical; /* call subroutine for this velocity */
     
@@ -996,7 +1019,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
     {   /* first, clone the 'dummy' particle so various fields are set appropriately */
         P[j] = P[dummy_cell_i_to_clone]; CellP[j] = CellP[dummy_cell_i_to_clone]; /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
 
-#if defined(SINK_TEST_WIND_MIXED_FASTSLOW) || defined(SINK_RIAF_SUBEDDINGTON_MODEL)
+#if (defined(SINK_TEST_WIND_MIXED_FASTSLOW) || defined(SINK_RIAF_SUBEDDINGTON_MODEL)) && !defined(CHO_JET)
         if(P[i].Type==5) {
             double masscorrfac_fast = 100.; /* ratio of spawned jet cell mass to non-jet cell mass */
             double fraction_to_spawn_in_jet = 0.1; /* fraction of spawned cells by number in jet */
@@ -1084,7 +1107,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #endif
 
        double internal_energy_code = All.Sink_outflow_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); /* internal energy, determined by desired wind temperature (assume fully ionized primordial gas with gamma=5/3) */
-#if defined(SINK_RIAF_SUBEDDINGTON_MODEL)
+#if defined(SINK_RIAF_SUBEDDINGTON_MODEL) && !defined(CHO_JET)
         internal_energy_code = 0.01 * (0.5*v_magnitude_physical*v_magnitude_physical); /* set to be 1% of the kinetic energy of the ejecta, here */
 #endif
 #ifdef CHO_JET
@@ -1107,6 +1130,35 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
         {mass_of_new_particle=mass_of_new_particle*pow(v_magnitude_physical/(C_LIGHT_CODE/1000.),2);
         internal_energy_code = internal_energy_code *pow(v_magnitude_physical/(C_LIGHT_CODE/1000.),-2);
         v_magnitude_physical=C_LIGHT_CODE/1000.; }
+      double x0 = v_magnitude_physical_default / C_LIGHT_CODE;
+      double z = log10(x0);
+      double cho_mass_norm =
+    1.57226014586356155e-01
+  - 6.81595864042870425e-01 * pow(z, 1)
+  + 1.21134917393435604e+00 * pow(z, 2)
+  + 3.19729419931455483e-01 * pow(z, 3)
+  - 2.62075298529527378e+00 * pow(z, 4)
+  - 2.64403258869059821e+00 * pow(z, 5)
+  + 2.27557770319021424e+00 * pow(z, 6)
+  + 8.31953649767502057e+00 * pow(z, 7)
+  + 6.04723602485519063e+00 * pow(z, 8)
+  - 4.00139672607786512e+00 * pow(z, 9)
+  - 9.84059771983704579e+00 * pow(z, 10)
+  - 7.50215238688583685e+00 * pow(z, 11)
+  - 3.07200264015672087e+00 * pow(z, 12)
+  - 7.22726992869345830e-01 * pow(z, 13)
+  - 9.22144314345098581e-02 * pow(z, 14)
+  - 4.95898408390677958e-03 * pow(z, 15);
+
+      mass_of_new_particle *= cho_mass_norm;
+    if((j - (NumPart + num_already_spawned)) % 2)
+     {
+    P[i].BH_tospawn_bin = BH_tospawn_bin_prev;
+    mass_of_new_particle = mass_of_new_particle_prev;
+    v_magnitude_physical = v_magnitude_physical_prev;
+    internal_energy_code = internal_energy_code_prev;
+     }
+      internal_energy_code_prev=internal_energy_code;BH_tospawn_bin_prev= P[i].BH_tospawn_bin;
 #endif
         v_magnitude_physical_prev = v_magnitude_physical; mode_prev = mode; mass_of_new_particle_prev=mass_of_new_particle;
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)

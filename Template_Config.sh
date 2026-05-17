@@ -615,6 +615,9 @@
 #USE_TIMESTEP_DILATION_FOR_ZOOMS            #- enable time dilation modules, need to customize for applications, cannot be simply generically turned on without coding how they will work
 #DILATION_FOR_STELLAR_KINEMATICS_ONLY       #- special version of time dilation designed for stellar kinematics in e.g. dense star clusters or galaxy centers
 #SINK_RIAF_SUBEDDINGTON_MODEL=(0.01)        #- enable an arbitrary modular variation in the radiative efficiency of BHs as a function of eddington ratio or other particle properties, with the critical transition to the jet mode at this eddington ratio (defined in terms of mdot/mdot_crit)
+#CHO_JET                         # use CHO to replace jet/wind and hot accretion model of RIAF. Automatically enables SINK_WIND_SPAWN=2, SINK_RIAF_SUBEDDINGTON_MODEL=0.01, END_AT_OVERHEAT=0.5, and SINK_SPIN_IN_PARAMS unless these are already defined.
+#SINK_SPIN_IN_PARAMS             # store BH spin as a per-sink particle field `P[i].Sink_Spin`, initialized from the parameter-file value `Sink_spin` when BHs are created or initialized, and saved/read in snapshots. This does not evolve spin by itself; it only lets feedback/accretion models use a particle-carried spin value. Automatically enabled by CHO_JET.
+#END_AT_OVERHEAT=0.5             # diagnostic safety check: abort if gas reaches extreme thermal energy or velocity. This is an abort check, not a limiter. Automatically enabled by CHO_JET.
 ####################################################################################################-
 
 ############################################################################################################################-

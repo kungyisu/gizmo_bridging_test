@@ -439,10 +439,12 @@ void set_sink_mdot(int i, int n, double dt)
        if (pow(soundspeed2+bhvel2,0.5)/(C_LIGHT_CODE)>1./6000. ) ROI_hot=1;
 #endif
         if(r_roi > r_kernel) {ROI_resolved = 1;}
+#ifdef CHO_JET
         if(ROI_hot){r_effective= 2. * All.G * m_sink / (soundspeed2+bhvel2);}
         else
+#endif
         {if(ROI_resolved)
-        {
+          {
             double mgas_enc = SinkTempInfo[i].Mgas_in_Kernel + P[n].Sink_Mass_Reservoir;
             double omega_enc = sqrt(All.G * m_kernel / (r_kernel*r_kernel*r_kernel));
             mdot_ROI = psi_magdisk * mgas_enc * omega_enc;
@@ -452,7 +454,7 @@ void set_sink_mdot(int i, int n, double dt)
 #else
             r_effective=r_roi;
 #endif
-        } else {
+          } else {
             double omega_enc = sqrt(All.G * P[n].Mass / (r_roi*r_roi*r_roi));
             double mdot_ROI_alt = psi_magdisk * P[n].Sink_Mass_Reservoir * omega_enc;
             r_effective=r_roi;
@@ -467,12 +469,21 @@ void set_sink_mdot(int i, int n, double dt)
         double mdot_Edd = m_sink / (5.e7 / UNIT_TIME_IN_YR);
         double mdot_crit_ROI = (2.*psi_magdisk) * mdot_Edd;
         mdot = 0;
+        double suppression_fac=0;
         if(mdot_ROI > mdot_crit_ROI)
         {
-            mdot = pow(r_grav/r_effective, 0.15) * mdot_ROI;
+            suppression_fac= pow(r_grav/r_effective, 0.15);
         } else {
-            mdot = pow(r_grav/r_effective, 0.5) * mdot_ROI;
+#ifdef CHO_JET
+            suppression_fac = DMIN((4.7-3.*P[n].Sink_Spin)*pow(r_grav/r_effective, 0.5) ,1.);
+#else
+            suppression_fac = pow(r_grav/r_effective, 0.5);
+#endif
         }
+#ifdef CHO_JET
+            suppression_fac = DMIN(DMAX(suppression_fac,5.e-5),0.9);
+#endif
+            mdot = suppression_fac * mdot_ROI;
         if(dt > 0) {
 #ifdef CHO_JET
             double mdot_ROI_max = P[n].Sink_Mass_Reservoir / dt+SinkTempInfo[i].mdot_reservoir;;
@@ -572,9 +583,10 @@ void set_sink_mdot(int i, int n, double dt)
     P[n].Sink_Mdot = DMAX(mdot,0);
 #ifdef CHO_JET
    if (P[n].Sink_Mdot_ROI>0)
-    P[n].BH_kappa=P[n].Sink_Mdot/P[n].Sink_Mdot_ROI;
+    {P[n].BH_kappa=P[n].Sink_Mdot/P[n].Sink_Mdot_ROI;}
    else
-    P[n].BH_kappa=0;
+    {P[n].BH_kappa=0;}
+   P[n].BH_kappa = DMIN(DMAX(P[n].BH_kappa, 5.e-5), 0.9);
 #endif
 }
 
@@ -775,6 +787,11 @@ void sink_final_operations(void)
         if(P[n].Mass > 0)
         {
             if((SinkTempInfo[i].accreted_Mass>0)||(SinkTempInfo[i].accreted_Sink_Mass>0)||(SinkTempInfo[i].accreted_Sink_Mass_reservoir>0)) { update_sink_moments = 1;}
+#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+            if((SinkTempInfo[i].accreted_unspawned_wind_mass > 0) ||
+               (SinkTempInfo[i].accreted_unspawned_wind_kappa > 0) ||
+               (SinkTempInfo[i].accreted_unspawned_wind_over > 0)) { update_sink_moments = 1; }
+#endif
 #ifdef SINK_FOLLOW_ACCRETED_ANGMOM
             for(k=0; k<3; k++) {if(SinkTempInfo[i].accreted_J[k] != 0) {update_sink_moments = 1;}}
 #endif
@@ -814,6 +831,11 @@ void sink_final_operations(void)
             P[n].Sink_Mass += SinkTempInfo[i].accreted_Sink_Mass;
 #ifdef SINK_ALPHADISK_ACCRETION
             P[n].Sink_Mass_Reservoir += SinkTempInfo[i].accreted_Sink_Mass_reservoir;
+#endif
+#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+            P[n].unspawned_wind_mass += SinkTempInfo[i].accreted_unspawned_wind_mass;
+            P[n].unspawned_wind_kappa += SinkTempInfo[i].accreted_unspawned_wind_kappa;
+            P[n].unspawned_wind_over += SinkTempInfo[i].accreted_unspawned_wind_over;
 #endif
 #ifdef GRAIN_FLUID
             P[n].Sink_Dust_Mass += SinkTempInfo[i].accreted_dust_Mass;

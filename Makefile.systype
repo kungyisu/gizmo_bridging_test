@@ -7,6 +7,7 @@
 #############
 
 SYSTYPE="github-ubuntu"
+#SYSTYPE="Anvil"
 #SYSTYPE="Frontera"
 #SYSTYPE="MacBookCellar"
 #SYSTYPE="Expanse"

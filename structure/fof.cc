@@ -1862,6 +1862,9 @@ void fof_make_sink_particles(void)
        P[import_indices[n]].Sink_Mdot_ROI=0;
        P[import_indices[n]].Sink_ROI=0;
 #endif
+#ifdef SINK_SPIN_IN_PARAMS
+        P[import_indices[n]].Sink_Spin = All.Sink_spin;
+#endif
 #ifdef SINK_COUNTPROGS
         P[import_indices[n]].Sink_CountProgs = 1;
 #endif

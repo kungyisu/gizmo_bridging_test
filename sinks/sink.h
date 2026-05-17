@@ -25,6 +25,11 @@ extern struct sink_temp_particle_data       // sinkdata_topass
     MyDouble accreted_Mass;
     MyDouble accreted_Sink_Mass;
     MyDouble accreted_Sink_Mass_reservoir;
+#if defined(SINK_WIND_SPAWN) && defined(CHO_JET)
+    MyDouble accreted_unspawned_wind_mass;
+    MyDouble accreted_unspawned_wind_kappa;
+    MyDouble accreted_unspawned_wind_over;
+#endif
 #if defined(SINK_SWALLOWGAS) && !defined(SINK_GRAVCAPTURE_GAS)
     MyDouble Sink_AccretionDeficit;
 #endif

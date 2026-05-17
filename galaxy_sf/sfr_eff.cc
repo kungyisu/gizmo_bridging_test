@@ -513,6 +513,9 @@ void star_formation_parent_routine(void)
                         P[i].Sink_Mdot_ROI=0;
                         P[i].Sink_ROI=0;
 #endif
+#ifdef SINK_SPIN_IN_PARAMS
+                        P[i].Sink_Spin = All.Sink_spin;
+#endif
 #ifdef SINK_COUNTPROGS
                         P[i].Sink_CountProgs = 1;
 #endif
