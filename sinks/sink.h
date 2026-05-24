@@ -55,7 +55,7 @@ extern struct sink_temp_particle_data       // sinkdata_topass
 #ifdef SINK_REPOSITION_ON_POTMIN
     MyFloat DF_rms_vel, DF_mean_vel[3], DF_mmax_particles;
 #endif
-#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
+#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING) || defined(CHO_JET)
     MyFloat Sink_SurroundingGasVel[3];
 #endif
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK

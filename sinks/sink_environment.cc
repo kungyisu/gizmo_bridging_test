@@ -73,7 +73,7 @@ MyFloat Jgas_in_Kernel[3], Jstar_in_Kernel[3], Jalt_in_Kernel[3]; // mass/angula
 #if defined(SINK_OUTPUT_MOREINFO)
     MyFloat Sfr_in_Kernel;
 #endif
-#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
+#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING) || defined(CHO_JET)
     MyFloat Sink_SurroundingGasVel[3];
 #endif
 #if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
@@ -114,7 +114,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #if defined(SINK_OUTPUT_MOREINFO)
     ASSIGN_ADD(SinkTempInfo[target].Sfr_in_Kernel,out->Sfr_in_Kernel,mode);
 #endif
-#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
+#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING) || defined(CHO_JET)
     for(k=0;k<3;k++) {ASSIGN_ADD(SinkTempInfo[target].Sink_SurroundingGasVel[k],out->Sink_SurroundingGasVel[k],mode);}
 #endif
 #if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
@@ -145,7 +145,7 @@ void sink_normalize_temp_info_struct_after_environment_loop(int i)
     if(SinkTempInfo[i].Mgas_in_Kernel > 0)
     {
         SinkTempInfo[i].Sink_SurroudingGasInternalEnergy /= SinkTempInfo[i].Mgas_in_Kernel;
-#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
+#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING) || defined(CHO_JET)
         for(k=0;k<3;k++) {SinkTempInfo[i].Sink_SurroundingGasVel[k] /= SinkTempInfo[i].Mgas_in_Kernel * All.cf_atime;}
 #endif
     }
@@ -212,7 +212,7 @@ int sink_environment_evaluate(int target, int mode, int *exportflag, int *export
 #if defined(SINK_OUTPUT_MOREINFO)
                         out.Sfr_in_Kernel += CellP[j].Sfr;
 #endif
-#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
+#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING) || defined(CHO_JET)
                         for(k=0;k<3;k++) {out.Sink_SurroundingGasVel[k] += wt*dv[k];}
 #endif
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK

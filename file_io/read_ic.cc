@@ -679,7 +679,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_TIDALTENSORPS:
         case IO_PRESSURE:
         case IO_HSMS:
+        case IO_DUST_TO_GAS:
         case IO_ACRB:
+        case IO_AMBIPOLAR:
+        case IO_OHMIC:
+        case IO_HALL:
+        case IO_SOFT:
+        case IO_SHOCKMACHNUM:
         case IO_VSTURB_DISS:
         case IO_VSTURB_DRIVE:
         case IO_grHI:
